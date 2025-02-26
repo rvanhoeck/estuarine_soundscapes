@@ -1,0 +1,816 @@
+---
+title: "correlation_by_habitat"
+author: "Becca Van Hoeck"
+date: "2/15/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## load packages
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(gridExtra)
+library(MuMIn)
+
+ecometrics = read.csv("data/clean_data/ecometrics.csv")
+
+```
+
+## Explore grouping by habitat type
+
+```{r}
+# SPL by Habitat
+ggplot(data = ecometrics, aes(x = habitat, y = avg_spl_low))+ theme_bw()+
+  geom_boxplot()
+
+splbyhabitat = lm(avg_spl_low ~ habitat, data = ecometrics)
+summary(splbyhabitat)
+SPLbyHabAOV = aov(splbyhabitat)
+TukeyHSD(SPLbyHabAOV)
+
+ggplot(data = ecometrics, aes(x = habitat, y = avg_spl_high))+ theme_bw()+
+  geom_boxplot()
+
+splHbyhabitat = lm(avg_spl_high ~ habitat, data = ecometrics)
+summary(splHbyhabitat)
+SPLHbyHabAOV = aov(splHbyhabitat)
+TukeyHSD(SPLHbyHabAOV)
+
+perchbyhabitat = lm(PerchAvgPresentNight ~ habitat, data = ecometrics)
+summary(perchbyhabitat)
+perchbyHabAOV = aov(perchbyhabitat)
+TukeyHSD(perchbyHabAOV)
+
+toadbyhabitat = lm(TFAvgPresentNight ~ habitat, data = ecometrics)
+summary(toadbyhabitat)
+toadbyHabAOV = aov(toadbyhabitat)
+TukeyHSD(toadbyHabAOV)
+
+# # SPL by nearest adj habitat type (landscape) 
+# ggplot(data = metricsSG, aes(x = adj_hab_type, y = avg_spl_low))+ theme_bw()+
+#   geom_boxplot()
+# 
+# ggplot(data = metricsSG, aes(x = adj_hab_type, y = avg_spl_high))+ theme_bw()+
+#   geom_boxplot()
+# 
+# ggplot(data = metricsC, aes(x = adj_hab_type, y = avg_spl_low))+ theme_bw()+
+#   geom_boxplot()
+# 
+# ggplot(data = metricsC, aes(x = adj_hab_type, y = avg_spl_high))+ theme_bw()+
+#   geom_boxplot()
+# 
+# ggplot(data = metricsM, aes(x = adj_hab_type, y = avg_spl_low))+ theme_bw()+
+#   geom_boxplot()
+# 
+# ggplot(data = metricsM, aes(x = adj_hab_type, y = avg_spl_high))+ theme_bw()+
+#   geom_boxplot()
+
+# SPL by distance to adjacent habitat patch (landscape) 
+# ggplot(data = metricsSG, aes(x = dist2adjPatch, y = avg_spl_low))+ theme_bw()+
+#   geom_point()
+# cor(metricsSG$dist2adjPatch,metricsSG$avg_spl_low)
+# 
+# ggplot(data = metricsSG, aes(x = dist2adjPatch, y = avg_spl_high))+ theme_bw()+
+#   geom_point()
+# cor(metricsSG$dist2adjPatch,metricsSG$avg_spl_high)
+
+ggplot(data = metricsC, aes(x = dist2adjPatch, y = avg_spl_low))+ theme_bw()+
+  geom_point()
+cor(metricsC$dist2adjPatch,metricsC$avg_spl_low)
+
+# ggplot(data = metricsC, aes(x = dist2adjPatch, y = avg_spl_high))+ theme_bw()+
+#   geom_point()
+# cor(metricsSG$dist2adjPatch,metricsSG$avg_spl_high)
+
+ggplot(data = metricsM, aes(x = dist2adjPatch, y = avg_spl_low))+ theme_bw()+
+  geom_point()
+cor(metricsM$dist2adjPatch, metricsM$avg_spl_low)
+
+ggplot(data = metricsM, aes(x = dist2adjPatch, y = avg_spl_high))+ theme_bw()+
+  geom_point()
+cor(metricsM$dist2adjPatch, metricsM$avg_spl_high)
+
+
+# Total catch by habitat
+ggplot(data = ecometrics, aes(x = habitat, y = total_abund_sum))+ theme_bw()+
+  geom_boxplot()
+
+
+# add label for position within seagrass bed - within, adjacent, other? 
+STposition = read.csv("data/metadata/hydrophone_seagrass_position.csv")
+metricsSG = left_join(metricsSG, STposition, by = "site_code")
+
+ggplot(data = metricsSG, aes(x = position, y = avg_spl_low))+ theme_bw()+
+  geom_boxplot()
+
+SPLbySTposition = lm(avg_spl_low ~ position, data = metricsSG)
+TukeyHSD(aov(SPLbySTposition))
+
+
+```
+
+## Seagrass only correlations
+
+```{r}
+metricsSG = read.csv("data/clean_data/ecometricsSeagrass.csv")
+
+metricsSG_num = metricsSG %>%
+  select(-X, -site, -bare, -Habitat, -site_code, -site_code2, -habitat, -soniferous, -index, -total_hab_area, -adj_hab_type)
+
+metricsSG$deploy_num = as.numeric(metricsSG$deploy_num)
+CorSeagrass = as.data.frame(cor(metricsSG_num, method = "pearson", use = "everything"))
+write.csv(CorSeagrass, "data/clean_data/CorrelationSeagrass.csv")
+
+
+# seagrassFiltered = read.csv("data/clean_data/CorrelationSeagrass_noRedundant.csv")
+# metricsSG_Filt = metricsSG_num %>%
+#   select(all_of(colnames(seagrassFiltered[,-1])))
+```
+Low frequency figures - seagrass
+```{r}
+
+LS_halodule = ggplot(aes(x = halodule, y = avg_spl_low),data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Halodule cover")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$halodule, metricsSG$avg_spl_low, method = "pearson")
+
+LS_zostera = ggplot(aes(x = zostera, y = avg_spl_low), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Zostera cover")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$zostera, metricsSG$avg_spl_low, method = "pearson")
+
+LS_hab_total = ggplot(aes(x = habitat_total, y = avg_spl_low),data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Total habitat area")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$habitat_total, metricsSG$avg_spl_low, method = "pearson")
+
+LS_saltmarsh_area = ggplot(aes(x = saltmarsh_area, y = avg_spl_low),data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Saltmarsh area")+
+  ylab("Average SPL (dB re 1 uPa)")+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$saltmarsh_area, metricsSG$avg_spl_low, method = "pearson")
+
+LS_bai_chr = ggplot(aes(x = num_bai_chr, y = avg_spl_low),data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Silver perch density")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$num_bai_chr, metricsSG$avg_spl_low, method = "pearson")
+
+LS_planktivore = ggplot(aes(x = planktivore, y = avg_spl_low),data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Planktivore density")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$planktivore, metricsSG$avg_spl_low, method = "pearson")
+
+LS_piscivore = ggplot(aes(x = piscivore, y = avg_spl_low),data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Piscivore density")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$piscivore, metricsSG$avg_spl_low, method = "pearson")
+
+LS_omni_2 = ggplot(aes(x = omni_2, y = avg_spl_low),data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Omnivore density")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$omni_2, metricsSG$avg_spl_low, method = "pearson")
+
+# temperature could actually be a seasonal pattern with chorusing
+LS_temp = ggplot(aes(x = avg_temp, y = avg_spl_low),data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Water temperature")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$avg_temp, metricsSG$avg_spl_low, method = "pearson")
+
+grid.arrange(LS_halodule, LS_zostera, LS_hab_total, LS_saltmarsh_area, LS_bai_chr,
+             LS_piscivore, LS_planktivore, LS_omni_2, LS_temp, nrow = 3)
+```
+High frequency figures - seagrass
+```{r}
+
+HS_zostera = ggplot(aes(x = zostera, y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Zostera cover")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$zostera, metricsSG$avg_spl_high, method = "pearson")
+
+HS_oyster_area = ggplot(aes(x = oyster_area , y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Oyster area")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$oyster_area, metricsSG$avg_spl_high, method = "pearson")
+
+
+HS_saltmarsh_area = ggplot(aes(x = saltmarsh_area, y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Saltmarsh area")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$saltmarsh_area, metricsSG$avg_spl_high, method = "pearson")
+
+HS_soniferous_S = ggplot(aes(x = soniferous_S, y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Soniferous species richness")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$soniferous_S, metricsSG$avg_spl_high, method = "pearson")
+
+HS_comm_evenness_sum = ggplot(aes(x = comm_evenness_sum, y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Community evenness")+
+  ylab("Average SPL (dB re 1 uPa)")+
+  #ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$comm_evenness_sum, metricsSG$avg_spl_high, method = "pearson")
+
+HS_piscivore = ggplot(aes(x = piscivore, y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Piscivore density")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$piscivore, metricsSG$avg_spl_high, method = "pearson")
+
+HS_omni_2 = ggplot(aes(x = omni_2, y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Omnivore density")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$omni_2, metricsSG$avg_spl_high, method = "pearson")
+
+HS_sal_avg = ggplot(aes(x = sal_avg, y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Salinity")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$sal_avg, metricsSG$avg_spl_high, method = "pearson")
+
+HS_avg_temp = ggplot(aes(x = avg_temp, y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Water temperature")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$avg_temp, metricsSG$avg_spl_high, method = "pearson")
+
+HS_depth_m_avg = ggplot(aes(x = depth_m_avg, y = avg_spl_high), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Depth (m)")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$depth_m_avg, metricsSG$avg_spl_high, method = "pearson")
+
+grid.arrange(HS_zostera, HS_saltmarsh_area, HS_oyster_area, HS_soniferous_S, HS_comm_evenness_sum, 
+             HS_piscivore, HS_omni_2, HS_avg_temp, HS_sal_avg, HS_depth_m_avg, ncol = 4)
+```
+Toadfish figures - seagrass
+```{r}
+
+# Night call rate correlations: 19 candidate metrics (when either deploy_num or comm_shannonD is removed)
+# Deploy_num and comm_shannonD_sum correlated  - shannonD barely higher cor with toadfish
+# halodule
+# oyster
+# richness
+# avg_shoot_density
+# sal_avg
+# comm_richness_sum
+# comm_shannonD_sum
+# carnivore
+# saltmarsh_core.area
+# richness_landscape
+
+
+
+T_avg_shoot_density = ggplot(aes(x = avg_shoot_density, y = ToadCallRate), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Shoot density")+
+  ylab("Toadfish call rate")+
+  #ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$avg_shoot_density, metricsSG$ToadCallRate, method = "pearson")
+
+T_oyster_area  = ggplot(aes(x = oyster_area, y = ToadCallRate), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Oyster area")+
+  #ylab("Toadfish call rate")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$oyster_area, metricsSG$ToadCallRate, method = "pearson")
+
+T_richness_landscape = ggplot(aes(x = richness_landscape, y = ToadCallRate), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Landscape habitat richness")+
+  #ylab("Toadfish call rate")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$richness_landscape, metricsSG$ToadCallRate, method = "pearson")
+
+T_comm_evenness_sum = ggplot(aes(x = comm_evenness_sum, y = ToadCallRate), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Community evenness")+
+  #ylab("Toadfish call rate")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$comm_evenness_sum, metricsSG$ToadCallRate, method = "pearson")
+
+T_soniferous_S = ggplot(aes(x = soniferous_S, y = ToadCallRate), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Soniferous species richness")+
+  #ylab("Toadfish call rate")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$soniferous_S, metricsSG$ToadCallRate, method = "pearson")
+
+T_omni_2 = ggplot(aes(x = omni_2, y = ToadCallRate), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Omnivore density")+
+  #ylab("Toadfish call rate")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$omni_2, metricsSG$ToadCallRate, method = "pearson")
+
+T_total_abund_sum = ggplot(aes(x = total_abund_sum, y = ToadCallRate), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Total catch density")+
+  ylab("Toadfish call rate")+
+  #ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$total_abund_sum, metricsSG$ToadCallRate, method = "pearson")
+
+T_sal_avg = ggplot(aes(x = sal_avg, y = ToadCallRate), data = metricsSG)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Salinity")+
+  #ylab("Toadfish call rate")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsSG$sal_avg, metricsSG$ToadCallRate, method = "pearson")
+
+grid.arrange(T_avg_shoot_density, T_oyster_area, T_richness_landscape, T_soniferous_S, T_total_abund_sum,
+             T_comm_evenness_sum, T_omni_2, T_sal_avg, nrow = 2)
+```
+Silver Perch figures - seagrass
+```{r}
+
+
+# 15 candidate metrics - landscape and abiotic
+
+# saltmarsh area 
+# oyster_perim.area.ratio
+# habtiat_total
+# avgTempNight
+
+```
+
+## Modeling Seagrass only: 
+
+Low frequency
+```{r}
+SLmetricModP = lm(avg_spl_low ~ halodule + zostera, data = metricsSG)
+SLmetricModL = lm(avg_spl_low ~ habitat_total + saltmarsh_area, data = metricsSG)
+SLmetricModC = lm(avg_spl_low ~ num_bai_chr + piscivore + planktivore + omni_2, data = metricsSG)
+SLmetricModA = lm(avg_spl_low ~ avg_temp, data = metricsSG)
+SLmetricModPL = lm(avg_spl_low ~ halodule + zostera + habitat_total + saltmarsh_area, data = metricsSG)
+SLmetricModPC = lm(avg_spl_low ~ halodule + zostera + num_bai_chr + piscivore + planktivore + omni_2, data = metricsSG)
+SLmetricModPA = lm(avg_spl_low ~ halodule + zostera + avg_temp, data = metricsSG)
+SLmetricModLC = lm(avg_spl_low ~ habitat_total + saltmarsh_area + num_bai_chr + piscivore + planktivore + omni_2, 
+                   data = metricsSG)
+SLmetricModLA = lm(avg_spl_low ~ habitat_total + saltmarsh_area + avg_temp, data = metricsSG)
+SLmetricModCA = lm(avg_spl_low ~ num_bai_chr + piscivore + planktivore + omni_2 + avg_temp, data = metricsSG)
+SLmetricModPLC = lm(avg_spl_low ~ halodule + zostera + habitat_total + saltmarsh_area
+                  + num_bai_chr + piscivore + planktivore + omni_2, data = metricsSG)
+SLmetricModPLA = lm(avg_spl_low ~ halodule + zostera + habitat_total + saltmarsh_area
+                  + avg_temp, data = metricsSG)
+SLmetricMODPCA = lm(avg_spl_low ~ halodule + zostera + num_bai_chr + piscivore + planktivore + omni_2 + avg_temp, 
+                    data = metricsSG)
+SLmetricModLCA = lm(avg_spl_low ~ habitat_total + saltmarsh_area + num_bai_chr + piscivore + planktivore + omni_2 + avg_temp,
+                  data = metricsSG)
+SLmetricModPLCA = lm(avg_spl_low ~ halodule + zostera + habitat_total + saltmarsh_area
+                  + num_bai_chr + piscivore + planktivore + omni_2 + avg_temp, data = metricsSG)
+
+model.sel(SLmetricModPLCA, SLmetricModLCA, SLmetricMODPCA, SLmetricModPLA, SLmetricModPLC, SLmetricModCA, SLmetricModLA,
+          SLmetricModLC,SLmetricModPA, SLmetricModPC, SLmetricModPL, SLmetricModP, SLmetricModL, SLmetricModC, SLmetricModA)
+```
+High frequency model - seagrass
+```{r}
+SHmetricModP = lm(avg_spl_high ~ zostera, data = metricsSG)
+SHmetricModL = lm(avg_spl_high ~ saltmarsh_area + oyster_area, data = metricsSG)
+SHmetricModC = lm(avg_spl_high ~ soniferous_S + comm_evenness_sum + piscivore + omni_2, data = metricsSG)
+SHmetricModA = lm(avg_spl_high ~ avg_temp + sal_avg + depth_m_avg, data = metricsSG)
+SHmetricModPL = lm(avg_spl_high ~ zostera + saltmarsh_area + oyster_area, data = metricsSG)
+SHmetricModPC = lm(avg_spl_high ~ zostera + soniferous_S + comm_evenness_sum + piscivore + omni_2, data = metricsSG)
+SHmetricModPA = lm(avg_spl_high ~ zostera + avg_temp + sal_avg + depth_m_avg, data = metricsSG)
+SHmetricModLC = lm(avg_spl_high ~ saltmarsh_area + oyster_area + soniferous_S + comm_evenness_sum + piscivore + omni_2, 
+                   data = metricsSG)
+SHmetricModLA = lm(avg_spl_high ~ saltmarsh_area + oyster_area + avg_temp + sal_avg + depth_m_avg, data = metricsSG)
+SHmetricModCA = lm(avg_spl_high ~ soniferous_S + comm_evenness_sum + piscivore + omni_2 + avg_temp + sal_avg + depth_m_avg,
+                   data = metricsSG)
+SHmetricModPLC = lm(avg_spl_high ~ zostera + saltmarsh_area + oyster_area
+                  + soniferous_S + comm_evenness_sum + piscivore + omni_2, data = metricsSG)
+SHmetricModPLA = lm(avg_spl_high ~ zostera + saltmarsh_area + oyster_area
+                  + avg_temp + sal_avg + depth_m_avg, data = metricsSG)
+SHmetricMODPCA = lm(avg_spl_high ~ zostera + soniferous_S + comm_evenness_sum + piscivore + omni_2 + avg_temp + sal_avg +
+                      depth_m_avg, data = metricsSG)
+SHmetricModLCA = lm(avg_spl_high ~ saltmarsh_area + oyster_area + soniferous_S + comm_evenness_sum + piscivore + omni_2 +
+                      avg_temp + sal_avg + depth_m_avg, data = metricsSG)
+SHmetricModPLCA = lm(avg_spl_high ~ zostera + saltmarsh_area + oyster_area + soniferous_S + comm_evenness_sum + piscivore +
+                       omni_2 + avg_temp + sal_avg + depth_m_avg, data = metricsSG)
+
+model.sel(SHmetricModPLCA, SHmetricModLCA, SHmetricMODPCA, SHmetricModPLA, SHmetricModPLC, SHmetricModCA, SHmetricModLA,
+          SHmetricModLC,SHmetricModPA, SHmetricModPC, SHmetricModPL, SHmetricModP, SHmetricModL, SHmetricModC, SHmetricModA)
+```
+Toadfish model - seagrass
+```{r}
+STmetricModP = lm(ToadCallRate ~ avg_shoot_density, data = metricsSG)
+STmetricModL = lm(ToadCallRate ~ oyster_area + richness_landscape, data = metricsSG)
+STmetricModC = lm(ToadCallRate ~ soniferous_S + total_abund_sum + comm_evenness_sum + omni_2, data = metricsSG)
+STmetricModA = lm(ToadCallRate ~ sal_avg, data = metricsSG)
+STmetricModPL = lm(ToadCallRate ~ avg_shoot_density + oyster_area + richness_landscape,
+                 data = metricsSG)
+STmetricModPC = lm(ToadCallRate ~ avg_shoot_density + soniferous_S + total_abund_sum + comm_evenness_sum + omni_2, 
+                   data = metricsSG)
+STmetricModPA = lm(ToadCallRate ~ avg_shoot_density + sal_avg, data = metricsSG)
+STmetricModLC = lm(ToadCallRate ~ oyster_area + richness_landscape + soniferous_S + total_abund_sum + comm_evenness_sum + omni_2,
+                   data = metricsSG)
+STmetricModLA = lm(ToadCallRate ~ oyster_area + richness_landscape + sal_avg, data = metricsSG)
+STmetricModCA = lm(ToadCallRate ~ soniferous_S + total_abund_sum + comm_evenness_sum + omni_2 + sal_avg, data = metricsSG)
+STmetricModPLC = lm(ToadCallRate ~ avg_shoot_density + oyster_area + richness_landscape
+                  + soniferous_S + total_abund_sum + comm_evenness_sum + omni_2, data = metricsSG)
+STmetricModPLA = lm(ToadCallRate ~ avg_shoot_density + oyster_area + richness_landscape
+                  + sal_avg, data = metricsSG)
+STmetricMODPCA = lm(ToadCallRate ~ avg_shoot_density + soniferous_S + total_abund_sum + comm_evenness_sum + omni_2 + sal_avg, 
+                    data = metricsSG)
+STmetricModLCA = lm(ToadCallRate ~ oyster_area + richness_landscape + soniferous_S + total_abund_sum + comm_evenness_sum + 
+                    omni_2 + sal_avg, data = metricsSG)
+STmetricModPLCA = lm(ToadCallRate ~ avg_shoot_density + oyster_area + richness_landscape
+                     + soniferous_S + total_abund_sum + comm_evenness_sum + omni_2 + sal_avg, data = metricsSG)
+
+model.sel(STmetricModPLCA, STmetricModLCA, STmetricMODPCA, STmetricModPLA, STmetricModPLC, STmetricModCA, STmetricModLA,
+          STmetricModLC, STmetricModPA, STmetricModPC, STmetricModPL, STmetricModP, STmetricModL, STmetricModC, STmetricModA)
+
+
+```
+Silver Perch model - seagrass
+```{r}
+# insert model results
+
+
+```
+
+### Creek only correlations
+
+low frequency
+```{r}
+metricsC = read.csv("data/clean_data/ecometricsCreek.csv")
+
+# metricsC_num = metricsC %>%
+#   select(-X, -site, -bare, -Habitat, -site_code, -site_code2, -habitat, -soniferous, -index, -total_hab_area, -adj_hab_type)
+# 
+# metricsC_num$deploy_num = as.numeric(metricsC_num$deploy_num)
+# 
+# CorCreek = as.data.frame(cor(metricsC_num, method = "pearson", use = "everything"))
+# write.csv(CorCreek, "data/clean_data/CorrelationCreek.csv")
+
+#creekFilt = read.csv("data/clean_data/CorrelationCreek_noRedundant.csv")
+
+CL_oyster = ggplot(aes(x = oyster, y = avg_spl_low),data = metricsC)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Oyster cover")+
+  ylab("Average SPL (dB re 1 uPa)")+
+  #ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsC$oyster, metricsC$avg_spl_low, method = "pearson")
+
+CL_sal = ggplot(aes(x = sal_avg, y = avg_spl_low),data = metricsC)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Salinity")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsC$sal_avg, metricsC$avg_spl_low, method = "pearson")
+
+CL_dist2adj = ggplot(aes(x = dist2adjPatch, y = avg_spl_low),data = metricsC)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Isolation (Distance to adjacent habitat)")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsC$dist2adjPatch, metricsC$avg_spl_low, method = "pearson")
+
+grid.arrange(CL_oyster, CL_dist2adj, CL_sal, nrow = 1)
+```
+High frequency figures - creek
+```{r}
+CH_oyster = ggplot(aes(x = oyster, y = avg_spl_high),data = metricsC)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Oyster cover")+
+  ylab("Average SPL (dB re 1 uPa)")+
+  #ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsC$oyster, metricsC$avg_spl_high, method = "pearson")
+
+CH_sal = ggplot(aes(x = sal_avg, y = avg_spl_high),data = metricsC)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Salinity")+
+  #ylab("Average SPL (dB re 1 uPa)")+
+  ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsC$sal_avg, metricsC$avg_spl_high, method = "pearson")
+
+grid.arrange(CH_oyster, CH_sal, nrow = 1)
+```
+Toadfish figures - creek
+```{r}
+# Night - 15 candidate metrics (all categories)
+
+# saltmarsh
+# total_cover
+# seagrass_perimeter
+# saltmarsh_perimeter
+# oyster_core.area
+# habitat_total
+# total_abund_sum
+# deploy_num
+# depth_m_avg
+
+# commented out those with cor magnitude lower than 0.5
+#cor(metricsC$saltmarsh, metricsC$TFAvgPresentNight, method = "pearson")
+cor(metricsC$total_cover, metricsC$TFAvgPresentNight, method = "pearson")
+cor(metricsC$seagrass_perimeter, metricsC$TFAvgPresentNight, method = "pearson")
+#cor(metricsC$saltmarsh_perimeter, metricsC$TFAvgPresentNight, method = "pearson")
+cor(metricsC$oyster_core.area, metricsC$TFAvgPresentNight, method = "pearson")
+#cor(metricsC$habitat_total, metricsC$TFAvgPresentNight, method = "pearson")
+#cor(metricsC$total_abund_sum, metricsC$TFAvgPresentNight, method = "pearson")
+cor(metricsC$deploy_num, metricsC$TFAvgPresentNight, method = "pearson")
+cor(metricsC$depth_m_avg, metricsC$TFAvgPresentNight, method = "pearson")
+
+
+
+CT_oyster = ggplot(aes(x = oyster, y = ToadCallRate),data = metricsC)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Oyster Cover")+
+  ylab("Toadfish Call Rate")+
+  #ylab(NULL)+
+  theme(axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14),
+        legend.position = "none")
+cor(metricsC$oyster, metricsC$ToadCallRate, method = "pearson")
+
+CT_oyster
+```
+Silver perch figures - creek
+```{r}
+
+# Night correlation: 13 candidate metrics ( all categories)
+
+# saltmarsh
+#cor(metricsC$saltmarsh, metricsC$PerchAvgPresentNight, method = "pearson")
+# seagrass_perimeter
+cor(metricsC$seagrass_perimeter, metricsC$PerchAvgPresentNight, method = "pearson")
+# saltmarsh perimeter
+#cor(metricsC$saltmarsh_perimeter, metricsC$PerchAvgPresentNight, method = "pearson")
+# oyster_core.area
+cor(metricsC$oyster_core.area, metricsC$PerchAvgPresentNight, method = "pearson")
+# oyster_perimeter
+cor(metricsC$oyster_perimeter, metricsC$PerchAvgPresentNight, method = "pearson")
+# habitat total
+#cor(metricsC$habitat_total, metricsC$PerchAvgPresentNight, method = "pearson")
+# total_abund_sum
+#cor(metricsC$total_abund_sum, metricsC$PerchAvgPresentNight, method = "pearson")
+# deploy_num
+cor(metricsC$deploy_num, metricsC$PerchAvgPresentNight, method = "pearson")
+
+
+```
+
+### Modeling creek
+
+Low frequency
+```{r}
+CL_metricModP = lm(avg_spl_low ~ oyster, data = metricsC)
+CL_metricModL = lm(avg_spl_low ~ dist2adjPatch, data = metricsC)
+CL_metricModA = lm(avg_spl_low ~ sal_avg, data = metricsC)
+CL_metricModPL = lm(avg_spl_low ~ oyster + dist2adjPatch, data = metricsC)
+CL_metricModPA = lm(avg_spl_low ~ oyster + sal_avg, data = metricsC)
+CL_metricModLA = lm(avg_spl_low ~ dist2adjPatch + sal_avg, data = metricsC)
+CL_metricModPLA = lm(avg_spl_low ~ oyster + dist2adjPatch + sal_avg, data = metricsC)
+
+model.sel(CL_metricModP, CL_metricModL, CL_metricModA, CL_metricModPL, CL_metricModPA, CL_metricModLA, CL_metricModPLA)
+```
+High frequency
+```{r}
+CH_metricModP = lm(avg_spl_high ~ oyster, data = metricsC)
+CH_metricModA = lm(avg_spl_high ~ sal_avg, data = metricsC)
+CH_metricModPA = lm(avg_spl_high ~ oyster + sal_avg, data = metricsC)
+
+AIC(CH_metricModP, CH_metricModA, CH_metricModPA)
+```
+Toadfish
+```{r}
+# Too low of sample size for this analysis - no residual degrees of freedom 
+
+CT_metricModP = lm(TFAvgPresentNight ~ total_cover, data = metricsC)
+CT_metricModL = lm(TFAvgPresentNight ~ seagrass_perimeter + oyster_core.area, data = metricsC)
+#CT_metricModC = lm(TFAvgPresentNight ~ total_abund_sum, data = metricsC)
+CT_metricModA = lm(TFAvgPresentNight ~ deploy_num + depth_m_avg, data = metricsC)
+CT_metricModPL = lm(TFAvgPresentNight ~ total_cover + seagrass_perimeter + oyster_core.area, 
+                    data = metricsC)
+#CT_metricModPC = lm(TFAvgPresentNight ~ total_cover + total_abund_sum, data = metricsC)
+CT_metricModPA = lm(TFAvgPresentNight ~ total_cover + deploy_num + depth_m_avg, data = metricsC)
+#CT_metricModLC = lm(TFAvgPresentNight ~ seagrass_perimeter + oyster_core.area + total_abund_sum, data = metricsC)
+CT_metricModLA = lm(TFAvgPresentNight ~ seagrass_perimeter + oyster_core.area + deploy_num + depth_m_avg,
+                    data = metricsC)
+#CT_metricModCA = lm(TFAvgPresentNight ~ total_abund_sum + deploy_num + depth_m_avg, data = metricsC)
+#CT_metricModPLC = lm(TFAvgPresentNight ~ total_cover + seagrass_perimeter + oyster_core.area + 
+#                     total_abund_sum, data = metricsC)
+CT_metricModPLA = lm(TFAvgPresentNight ~ total_cover + seagrass_perimeter + oyster_core.area + 
+                     deploy_num + depth_m_avg, data = metricsC)
+#CT_metricModPCA = lm(TFAvgPresentNight ~ total_cover + total_abund_sum + deploy_num + depth_m_avg, data = metricsC)
+#CT_metricModLCA = lm(TFAvgPresentNight ~ seagrass_perimeter + saltmarsh_perimeter + oyster_core.area + total_abund_sum + deploy_num + depth_m_avg, 
+#                     data = metricsC)
+#CT_metricMOdPLCA = lm(TFAvgPresentNight ~ total_cover + seagrass_perimeter + oyster_core.area + 
+#                        total_abund_sum + deploy_num + depth_m_avg, data = metricsC)
+
+# repeated analysis with only abs(cor) > 0.5
+model.sel(CT_metricModA, CT_metricModL, CT_metricModLA, CT_metricModP, CT_metricModPA, CT_metricModPL, CT_metricModPLA)
+
+#model.sel(CT_metricModA, CT_metricModC, CT_metricModCA, CT_metricModL, CT_metricModLA, CT_metricModLC, CT_metricModLCA, CT_metricModP, CT_metricModPA, 
+#          CT_metricModPC, CT_metricModPCA, CT_metricModPL, CT_metricModPLA, CT_metricModPLC, CT_metricMOdPLCA)
+
+CTuniqueP = summary(CT_metricModPA)$r.squared - summary(CT_metricModA)$r.squared
+CTuniqueA = summary(CT_metricModPCA)$r.squared - summary(CT_metricModP)$r.squared
+CTtotal = summary(CT_metricModPA)$r.squared
+# check method
+CTshared = summary(CT_metricModA)$r.squared-CTuniqueA
+
+# with only oyster core area and depth - abs(cor) > 0.7
+CT_metricModL = lm(TFAvgPresentNight ~ oyster_core.area, data = metricsC)
+CT_metricModA = lm(TFAvgPresentNight ~ depth_m_avg, data = metricsC)
+CT_metricModLA = lm(TFAvgPresentNight ~ oyster_core.area + depth_m_avg, data = metricsC)
+
+model.sel(CT_metricModLA, CT_metricModL, CT_metricModA)
+
+
+```
+Silver perch
+```{r}
+
+# out of curiosity - I looked at effect of oyster core area alone and it became the best model- unsure how to move forward. 
+# the implications for other analyses is concerning... definitely point to in discussion
+
+CP_metricModL = lm(PerchAvgPresentNight ~ seagrass_perimeter + oyster_core.area + oyster_perimeter, data = metricsC)
+#CP_metricModL2 = lm(PerchAvgPresentNight ~ oyster_core.area, data = metricsC)
+CP_metricModA = lm(PerchAvgPresentNight ~ deploy_num, data = metricsC)
+CP_metricModLA = lm(PerchAvgPresentNight ~ seagrass_perimeter + oyster_core.area + oyster_perimeter + deploy_num, data = metricsC)
+
+model.sel(CP_metricModLA, CP_metricModL, CP_metricModA, CP_metricModL2)
+
+```
+
+### Mudflat only correlations
+
+Environmental metrics were heavily correlated with landscape scale habitat metrics, tried to remove the variables with the most redundant correlation (maximize number of candidate metrics)
+
+```{r}
+metricsM = read.csv("data/clean_data/ecometricsMudflat.csv")
+
+metricsM_num = metricsM %>%
+  select(-X, -deploy_num, -site, -bare, -Habitat, -site_code, -habitat, -soniferous, -index, -total_hab_area, -adj_hab_type)
+
+CorMud = as.data.frame(cor(metricsM_num, method = "pearson", use = "everything"))
+write.csv(CorMud, "data/clean_data/CorrelationMudflat.csv")
+
+
+
+```
+

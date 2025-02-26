@@ -114,9 +114,9 @@ patchScale4fig_comb = siteMean_pc_comb[!(siteMean_pc_comb$identity == "other"|
                                       siteMean_pc_comb$identity == "algae" | 
                                       siteMean_pc_comb$identity == "bare"),]
 
-# edit to show descending order of total cover? 
-ggplot(aes(x = site, y = perc_cover, fill = identity), data = patchScale4fig_comb)+ theme_bw()+
-  geom_bar(stat = "identity")
+# # edit to show descending order of total cover? 
+# ggplot(aes(x = site, y = perc_cover, fill = identity), data = patchScale4fig_comb)+ theme_bw()+
+#   geom_bar(stat = "identity")
 
 
 ```

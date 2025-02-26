@@ -729,6 +729,48 @@ summary(TmetricModL)$r.squared
 
 ```
 
+### Modeling toadfish using binomial glm
+
+```{r}
+#
+
+TmetricModP = lm(AvgPresent ~ richness_comb + total_cover, data = ecometrics)
+TmetricModL = lm(AvgPresent ~ oyster_perimeter + saltmarsh_area, data = ecometrics)
+#TmetricModC = lm(AvgPresent ~ herbivore, data = ecometrics)
+#TmetricModA = lm(AvgPresent ~ deploy_num, data = ecometrics)
+TmetricModPL = lm(AvgPresent ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area, data = ecometrics)
+#TmetricModPC = lm(AvgPresent ~ richness_comb + total_cover + herbivore, data = ecometrics)
+#TmetricModPA = lm(AvgPresent ~ richness_comb + total_cover + deploy_num, data = ecometrics)
+#TmetricModLC = lm(AvgPresent ~ oyster_perimeter + saltmarsh_area + herbivore, data = ecometrics)
+#TmetricModLA = lm(AvgPresent ~ oyster_perimeter + saltmarsh_area + deploy_num, data = ecometrics)
+#TmetricModCA = lm(AvgPresent ~ herbivore + deploy_num, data = ecometrics)
+#TmetricModPLC = lm(AvgPresent ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + herbivore, data = ecometrics)
+#TmetricModPLA = lm(AvgPresent ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + deploy_num, data = ecometrics)
+#TmetricModPCA = lm(AvgPresent ~ richness_comb + total_cover + herbivore + deploy_num, data = ecometrics)
+#TmetricModLCA = lm(AvgPresent ~ oyster_perimeter + saltmarsh_area + herbivore + deploy_num, data = ecometrics)
+#TmetricModPLCA = lm(AvgPresent ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + herbivore + deploy_num, data = ecometrics)
+
+model.sel(TmetricModPL, TmetricModP, TmetricModL)
+
+#AICc: L,P
+
+# Calculate variable weights and decide whether to include landscape variables
+ToadfishMods = list(TmetricModPA, TmetricModPLA)
+importance(ToadfishMods)
+
+# Attempting variance partitioning 
+Tpatch = summary(TmetricModPL)$r.squared - summary(TmetricModL)$r.squared
+Tlandscape = summary(TmetricModPL)$r.squared - summary(TmetricModP)$r.squared
+#Tabiotic = summary(TmetricModPLA)$r.squared - summary(TmetricModPL)$r.squared
+Tunexplained = 1 - summary(TmetricModPL)$r.squared
+Ttotal = summary(TmetricModPL)$r.squared 
+Tpatch+Tlandscape+Tunexplained
+Tcomm = 0
+
+summary(TmetricModL)$r.squared 
+
+```
+
 ### Modeling Silver Perch
 
 ```{r}
