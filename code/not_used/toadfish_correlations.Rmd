@@ -1,0 +1,175 @@
+---
+title: "toadfish_correlations"
+author: "Becca Van Hoeck"
+date: "2/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+```
+
+## Load data
+
+```{r}
+toadCR = read.csv("data/clean_data/ToadfishCallRate.csv")
+pmHT_temp = read.csv("data/clean_data/pmHT_AvgTemp.csv", header = FALSE)
+
+ecometrics = read.csv("data/clean_data/ecometrics.csv")
+
+# make deployment a factor to include as a random effect
+ecometrics$deploy = factor(ecometrics$deploy_num.x)
+
+# correct habitat assignment for Seagrass C
+ecometrics$habitat[ecometrics$site_code == "SC"] = "seagrass"
+
+# load other metrics
+landscapeMetrics = read.csv("data/clean_data/landscape_metrics.csv", header = TRUE)
+landscapeMetrics = landscapeMetrics %>%
+  mutate(habitat_total = seagrass_area+saltmarsh_area+oyster_area)
+ecometrics = left_join(ecometrics, landscapeMetrics, by = c("site_code" = "site"))
+
+annMetrics = read.csv("data/raw_data/nearest_neighbor_results.csv", header = TRUE)
+ecometrics$nnratio = annMetrics$NNratio
+ecometrics$distadj = annMetrics$dist2adjPatch
+ecometrics$land_richness = annMetrics$richness_landscape
+
+ecometrics = left_join(ecometrics, toadCR, by = c("site_code" = "Site"))
+ecometrics$ToadCallRate[is.na(ecometrics$ToadCallRate)] = 0
+
+
+```
+
+## Toadfish fundamental frequency vs temp
+
+```{r}
+
+F1_temp = read.csv("data/clean_data/toadF1_temps.csv", header = TRUE)
+F1_temp = na.omit(F1_temp)
+
+ggplot(data = F1_temp, aes(x = fileTemp, y = ToadF1))+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = lm, se = FALSE)+
+  xlab("Temperature")+
+  ylab("Fundamental Frequency")+
+  theme(axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14))
+
+toadF1_temp = lm(ToadF1 ~ fileTemp, data = F1_temp)
+summary(toadF1_temp)
+
+
+```
+
+## Summarize toadfish call rate by habitat
+
+```{r}
+
+ggplot(data = ecometrics, aes(x = reorder(site_code, ToadCallRate), y = ToadCallRate, fill = habitat))+ theme_bw()+
+  geom_col()+
+  xlab("Site")+
+  ylab("Call Rate (calls/2 min)")+
+  scale_fill_discrete(labels = c("Saltmarsh creek", "Mudflat", "Seagrass"))+
+  labs(fill = "Habitat")+
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = .3), 
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 14))
+
+ggplot(data = ecometrics, aes(x = reorder(site_code, X), y = ToadCallRate, fill = habitat))+ theme_bw()+
+  geom_col()+
+  xlab("Site")+
+  ylab("Call Rate (calls/2 min)")+
+  scale_fill_discrete(labels = c("Saltmarsh creek", "Mudflat", "Seagrass"))+
+  labs(fill = "Habitat")+
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = .3), 
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 14))
+
+
+ggplot(data = ecometrics, aes(x = oyster, y = ToadCallRate))+ theme_bw()+
+  geom_point()
+
+
+```
+
+# Examine correlations with patch scale habitat
+
+```{r}
+
+toad_hab = ecometrics %>%
+  select(site, habitat, totalcover, oyster, saltmarsh, evenness,
+         avg_shoot_density, avg_blade_length, ToadCallRate, ToadCallRateNorm)
+
+toad_cor = cor(toad_hab[,c(3:10)], use = "complete.obs")
+toad_saltmarsh = cor(toad_hab$ToadCallRate, toad_hab$saltmarsh, use = "complete.obs")
+
+## Toadfish & Patch-scale Habitat
+# oyster & average shoot density
+
+ggplot(aes(x = oyster, y = ToadCallRate),data = ecometrics)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Oyster cover")+
+  ylab("Toadfish Call Rate")+
+  theme(axis.title = element_text(size = 20), 
+        axis.text = element_text(size = 16))
+cor(ecometrics$oyster, ecometrics$ToadCallRate, method = "pearson")
+
+
+ggplot(aes(x = avg_shoot_density, y = ToadCallRate),data = ecometrics)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Average shoot density")+
+  ylab("Toadfish Call Rate")+
+  theme(axis.title = element_text(size = 20), 
+        axis.text = element_text(size = 16))
+cor(ecometrics$avg_shoot_density, ecometrics$ToadCallRate, method = "pearson", use = "complete.obs")
+
+
+```
+
+## landscape scale
+
+```{r}
+
+toad_land = ecometrics %>%
+  select(seagrass_area, saltmarsh_area, mudflat_area, oyster_area, nnratio, ToadCallRate, ToadCallRateNorm)
+cor(toad_land)
+
+ggplot(aes(x = oyster_area, y = ToadCallRate), data = ecometrics)+ theme_bw()+
+  geom_point()+
+  geom_smooth(method = "lm", formula = 'y ~x', se = FALSE, color = "black")+
+  xlab("Oyster Area (Landscape)")+
+  ylab("Toadfish Call Rate")+
+  theme(axis.title = element_text(size = 20), 
+        axis.text = element_text(size = 16))
+cor(ecometrics$oyster_area, ecometrics$ToadCallRate, method = "pearson")
+
+
+```
+
+## Community & Environment
+
+```{r}
+
+toad_com = ecometrics %>%
+  select(site, habitat, depth_m_avg, sal_avg, total_abund_sum, comm_richness_sum, comm_evenness_sum, 
+          herbivore, omnivore, detritivore, piscivore, ToadCallRate, ToadCallRateNorm)
+cor(toad_com[,3:13], method = "pearson", use = "complete.obs")
+
+
+```
+
