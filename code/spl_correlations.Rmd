@@ -327,7 +327,7 @@ max(ecometrics$avg_spl_high)
 # Toadfish - AvgPresent v4
 
 ```{r}
-# 
+
 # ggplot(aes(x = index, y = AvgPresent, fill = habitat), data = ecometrics)+
 #   theme_bw()+
 #   geom_bar(stat = "identity")+
@@ -341,7 +341,7 @@ max(ecometrics$avg_spl_high)
 #   #ylab("Toadfish Call Rate")+
 #   ylab(NULL)+
 #   scale_color_manual(values = c("#414487", "#fde725","#22a884"))+
-#   theme(axis.title = element_text(size = 16), 
+#   theme(axis.title = element_text(size = 16),
 #         axis.text = element_text(size = 16),
 #         legend.position = "none")
 # cor(ecometrics$seagrass_core.area, ecometrics$AvgPresent, method = "pearson")
@@ -354,7 +354,7 @@ max(ecometrics$avg_spl_high)
 #   #ylab("Toadfish Call Rate")+
 #   ylab(NULL)+
 #   scale_color_manual(values = c("#414487", "#fde725","#22a884"))+
-#   theme(axis.title = element_text(size = 16), 
+#   theme(axis.title = element_text(size = 16),
 #         axis.text = element_text(size = 16),
 #         legend.position = "none")
 # cor(ecometrics$NNratio, ecometrics$AvgPresent, method = "pearson")
@@ -367,7 +367,7 @@ max(ecometrics$avg_spl_high)
 #   #ylab("Toadfish Call Rate")+
 #   ylab(NULL)+
 #   scale_color_manual(values = c("#414487", "#fde725","#22a884"))+
-#   theme(axis.title = element_text(size = 16), 
+#   theme(axis.title = element_text(size = 16),
 #         axis.text = element_text(size = 16),
 #         legend.position = "none")
 # cor(ecometrics$soniferous_S, ecometrics$AvgPresent, method = "pearson")
@@ -380,7 +380,7 @@ max(ecometrics$avg_spl_high)
 #   #ylab("Toadfish Call Rate")+
 #   ylab(NULL)+
 #   scale_color_manual(values = c("#414487", "#fde725","#22a884"))+
-#   theme(axis.title = element_text(size = 16), 
+#   theme(axis.title = element_text(size = 16),
 #         axis.text = element_text(size = 16),
 #         legend.position = "none")
 # cor(ecometrics$deploy_num, ecometrics$AvgPresent, method = "pearson")
@@ -689,7 +689,7 @@ Habiotic = 0
 # can use variable weights from AIC to justify which metric categories should be included. 
 ```
 
-### Modeling toadfish
+### Modeling toadfish - included in original manuscript, needs to be corrected
 
 ```{r}
 TmetricModP = lm(AvgPresent ~ richness_comb + total_cover, data = ecometrics)
@@ -729,26 +729,74 @@ summary(TmetricModL)$r.squared
 
 ```
 
-### Modeling toadfish using binomial glm
+### Modeling toadfish - Percent Presence
+
+```{r}
+TmetricModP = lm(PercentPresence ~ richness_comb + total_cover, data = ecometrics)
+TmetricModL = lm(PercentPresence ~ oyster_perimeter + saltmarsh_area, data = ecometrics)
+#TmetricModC = lm(PercentPresence ~ herbivore, data = ecometrics)
+#TmetricModA = lm(PercentPresence ~ deploy_num, data = ecometrics)
+TmetricModPL = lm(PercentPresence ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area, data = ecometrics)
+#TmetricModPC = lm(PercentPresence ~ richness_comb + total_cover + herbivore, data = ecometrics)
+#TmetricModPA = lm(PercentPresence ~ richness_comb + total_cover + deploy_num, data = ecometrics)
+#TmetricModLC = lm(PercentPresence ~ oyster_perimeter + saltmarsh_area + herbivore, data = ecometrics)
+#TmetricModLA = lm(PercentPresence ~ oyster_perimeter + saltmarsh_area + deploy_num, data = ecometrics)
+#TmetricModCA = lm(PercentPresence ~ herbivore + deploy_num, data = ecometrics)
+#TmetricModPLC = lm(PercentPresence ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + herbivore, data = ecometrics)
+#TmetricModPLA = lm(PercentPresence ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + deploy_num, data = ecometrics)
+#TmetricModPCA = lm(PercentPresence ~ richness_comb + total_cover + herbivore + deploy_num, data = ecometrics)
+#TmetricModLCA = lm(PercentPresence ~ oyster_perimeter + saltmarsh_area + herbivore + deploy_num, data = ecometrics)
+#TmetricModPLCA = lm(PercentPresence ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + herbivore + deploy_num, data = ecometrics)
+
+model.sel(TmetricModPL, TmetricModP, TmetricModL)
+
+# Full suite not used, because only patch and landscape correlations were included
+#model.sel(TmetricModPLCA, TmetricModLCA, TmetricModPCA, TmetricModPLA, TmetricModPLC, TmetricModCA, TmetricModLA, TmetricModLC,
+    #TmetricModPA, TmetricModPC, TmetricModPL, TmetricModP, TmetricModL, TmetricModC, TmetricModA)
+
+#AICc: LC 
+
+# # Calculate variable weights and decide whether to include landscape variables
+# ToadfishMods = list(TmetricModPA, TmetricModPLA)
+# importance(ToadfishMods)
+
+# Attempting variance partitioning 
+Tpatch = summary(TmetricModPL)$r.squared - summary(TmetricModL)$r.squared
+Tlandscape = summary(TmetricModPL)$r.squared - summary(TmetricModP)$r.squared
+Tabiotic = 0
+Tunexplained = 1 - summary(TmetricModPL)$r.squared
+Tcomm = 0
+Ttotal = summary(TmetricModPL)$r.squared 
+
+summary(TmetricModL)$r.squared 
+
+
+```
+
+### Modeling toadfish using binomial glm - did not fully apply code, getting a warning
+
+runs with quasi binomial family, but doesn't give R squared
+To use a binomial model would need to add weights for each site (total number of days)
 
 ```{r}
 #
+ecometrics$ProportionPresence = ecometrics$PercentPresence/100
 
-TmetricModP = lm(AvgPresent ~ richness_comb + total_cover, data = ecometrics)
-TmetricModL = lm(AvgPresent ~ oyster_perimeter + saltmarsh_area, data = ecometrics)
-#TmetricModC = lm(AvgPresent ~ herbivore, data = ecometrics)
-#TmetricModA = lm(AvgPresent ~ deploy_num, data = ecometrics)
-TmetricModPL = lm(AvgPresent ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area, data = ecometrics)
-#TmetricModPC = lm(AvgPresent ~ richness_comb + total_cover + herbivore, data = ecometrics)
-#TmetricModPA = lm(AvgPresent ~ richness_comb + total_cover + deploy_num, data = ecometrics)
-#TmetricModLC = lm(AvgPresent ~ oyster_perimeter + saltmarsh_area + herbivore, data = ecometrics)
-#TmetricModLA = lm(AvgPresent ~ oyster_perimeter + saltmarsh_area + deploy_num, data = ecometrics)
-#TmetricModCA = lm(AvgPresent ~ herbivore + deploy_num, data = ecometrics)
-#TmetricModPLC = lm(AvgPresent ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + herbivore, data = ecometrics)
-#TmetricModPLA = lm(AvgPresent ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + deploy_num, data = ecometrics)
-#TmetricModPCA = lm(AvgPresent ~ richness_comb + total_cover + herbivore + deploy_num, data = ecometrics)
-#TmetricModLCA = lm(AvgPresent ~ oyster_perimeter + saltmarsh_area + herbivore + deploy_num, data = ecometrics)
-#TmetricModPLCA = lm(AvgPresent ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + herbivore + deploy_num, data = ecometrics)
+TmetricModP = glm(ProportionPresence ~ richness_comb + total_cover, data = ecometrics, family = quasibinomial())
+TmetricModL = glm(ProportionPresence ~ oyster_perimeter + saltmarsh_area, data = ecometrics, family = quasibinomial())
+TmetricModC = glm(ProportionPresence ~ herbivore, data = ecometrics, family = quasibinomial())
+TmetricModA = glm(ProportionPresence ~ deploy_num, data = ecometrics, family = quasibinomial())
+TmetricModPL = glm(ProportionPresence ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area, data = ecometrics, family = quasibinomial())
+TmetricModPC = glm(ProportionPresence ~ richness_comb + total_cover + herbivore, data = ecometrics, family = quasibinomial())
+TmetricModPA = glm(ProportionPresence ~ richness_comb + total_cover + deploy_num, data = ecometrics, family = quasibinomial())
+TmetricModLC = glm(ProportionPresence ~ oyster_perimeter + saltmarsh_area + herbivore, data = ecometrics, family = quasibinomial())
+TmetricModLA = glm(ProportionPresence ~ oyster_perimeter + saltmarsh_area + deploy_num, data = ecometrics, family = quasibinomial())
+TmetricModCA = glm(ProportionPresence ~ herbivore + deploy_num, data = ecometrics, family = quasibinomial())
+TmetricModPLC = glm(ProportionPresence ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + herbivore, data = ecometrics, family = quasibinomial())
+TmetricModPLA = glm(ProportionPresence ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + deploy_num, data = ecometrics, family = quasibinomial())
+TmetricModPCA = glm(ProportionPresence ~ richness_comb + total_cover + herbivore + deploy_num, data = ecometrics, family = quasibinomial())
+TmetricModLCA = glm(ProportionPresence ~ oyster_perimeter + saltmarsh_area + herbivore + deploy_num, data = ecometrics, family = quasibinomial())
+TmetricModPLCA = glm(ProportionPresence ~ richness_comb + total_cover + oyster_perimeter + saltmarsh_area + herbivore + deploy_num, data = ecometrics, family = quasibinomial())
 
 model.sel(TmetricModPL, TmetricModP, TmetricModL)
 
