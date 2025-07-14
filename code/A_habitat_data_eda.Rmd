@@ -17,13 +17,14 @@ library(dplyr)
 library(tidyr)
 library(vegan)
 library(gridExtra)
+library(here)
 ```
 
 ## Load all habitat data
 
 ```{r }
 
-data = read.csv("data/clean_data/sound_habitat_data_2020.csv", header = TRUE)
+data = read.csv(here("data/clean_data/sound_habitat_data_2020.csv"), header = TRUE)
 
 ```
 
