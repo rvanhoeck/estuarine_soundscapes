@@ -775,7 +775,7 @@ summary(TmetricModL)$r.squared
 
 ```
 
-### Modeling toadfish using binomial glm - did not fully apply code, getting a warning
+### Modeling toadfish using binomial glm 
 
 To use a binomial model would need to add weights for each site (total number of files)
 Only patch and landscape-scale habitat metrics were retained, so limited to those models
