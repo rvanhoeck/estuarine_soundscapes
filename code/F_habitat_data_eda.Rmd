@@ -1,0 +1,533 @@
+---
+title: "habitat_data"
+author: "Becca Van Hoeck"
+date: "12/20/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+```
+
+02/15/2022 Note: reviewed all code, confirmed joins, and replaced most references to hard-coded column numbers
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(vegan)
+library(gridExtra)
+library(here)
+```
+
+## Load all habitat data
+
+```{r }
+
+data = read.csv(here("data/clean_data/sound_habitat_data_2020.csv"), header = TRUE)
+
+```
+
+## Summarize each site
+- calculate site level average cover (wide and long form)
+- plot percent cover
+- calculate habitat forming species richness, diversity, and evenness
+
+```{r}
+# Average cover by each taxa at site level
+
+# Wide form: for data frame
+site_means = data %>% 
+  group_by(deploy_num,site) %>%
+  summarise(bare = mean(bare), halodule = mean(halodule), zostera = mean(zostera), 
+            ruppia= mean(ruppia), algae = mean(algae), oyster = mean(oyster), saltmarsh = mean(saltmarsh),
+            other = mean(other))
+
+# Long form: for EDA plots
+siteMean_pc = data.frame(gather(site_means, "identity", "perc_cover", -site, -deploy_num))
+siteMean_pc$identity = factor(siteMean_pc$identity, levels = c("bare","halodule","oyster","saltmarsh",
+                                                               "ruppia", "zostera", "algae", "other"))
+
+ggplot(siteMean_pc, aes(x = perc_cover, y = identity, color = identity))+ theme_bw()+
+  geom_point(alpha = .5, position = "jitter")+
+  xlab('Percent Cover')+
+  ylab('Benthic species identity')+
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12), 
+        legend.position = "none")
+
+
+## Benthic species community metrics - excludes algae & other
+site_means$richness = apply(site_means[,c("halodule","zostera","ruppia","saltmarsh","oyster")]>0,1,sum) 
+site_means$shannonD = diversity(site_means[,c("halodule","zostera","ruppia","saltmarsh","oyster")], "shannon")
+site_means$evenness = site_means$shannonD/log(site_means$richness, base = 2)
+
+
+```
+
+## Summarized by seagrass 
+- repeat average cover and metric calculations with seagrass species combined
+- plot percent cover combined
+
+```{r}
+data = data %>% mutate(seagrass = halodule+zostera+ruppia)
+
+# Wide form: for data frame
+site_means_comb = data %>% 
+  group_by(deploy_num,site) %>%
+  summarise(bare = mean(bare), seagrass = mean(seagrass), algae = mean(algae), 
+            oyster = mean(oyster), saltmarsh = mean(saltmarsh), other = mean(other))
+
+# Long form: for plotting
+siteMean_pc_comb = data.frame(gather(site_means_comb, "identity", "perc_cover", -site, -deploy_num))
+siteMean_pc_comb$identity = factor(siteMean_pc_comb$identity, 
+                                   levels = c("bare","seagrass","oyster","saltmarsh","algae","other"))
+
+ggplot(siteMean_pc_comb, aes(x = perc_cover, y = identity, color = identity))+ theme_bw()+
+  geom_point(alpha = .5, position = "jitter")+
+  xlab('Percent Cover')+
+  ylab('Benthic species identity')+
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12), 
+        legend.position = "none")
+
+# Seagrass species specific cover: for plotting
+seagrass_pc = site_means[,c(1,2,4:6)]
+seagrass_pc_long = data.frame(gather(seagrass_pc, "identity", "perc_cover", -site, -deploy_num))
+
+ggplot(seagrass_pc_long, aes(x = perc_cover, y = identity, color = identity))+ theme_bw()+
+  geom_point(alpha = .5, position = "jitter")+
+  xlab('Percent Cover')+
+  ylab('Benthic species identity')+
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12), 
+        legend.position = "none")
+
+## Benthic species community metrics - excludes algae & other
+site_means_comb$richness_comb = apply(site_means_comb[,c("seagrass","oyster","saltmarsh")]>0, 1, sum)
+site_means_comb$shannonD_comb = diversity(site_means_comb[,c("seagrass","oyster","saltmarsh")], "shannon")
+site_means_comb$evenness_comb = site_means_comb$shannonD_comb/log(site_means_comb$richness_comb, base = 2)
+
+### attempting a stacked bar chart summarizing patch-scale cover
+# use siteMean_pc_comb
+
+patchScale4fig_comb = siteMean_pc_comb[!(siteMean_pc_comb$identity == "other"| 
+                                      siteMean_pc_comb$identity == "algae" | 
+                                      siteMean_pc_comb$identity == "bare"),]
+
+# # edit to show descending order of total cover? 
+# ggplot(aes(x = site, y = perc_cover, fill = identity), data = patchScale4fig_comb)+ theme_bw()+
+#   geom_bar(stat = "identity")
+
+
+```
+
+## Total cover of habitat-forming species
+- calculate total cover of habitat-forming species
+
+```{r}
+data = data %>% 
+  mutate(total_cover = halodule+zostera+ruppia+saltmarsh+oyster+algae+other, 
+         habitat = case_when(grepl("Seagrass", site) ~ "seagrass", 
+                             grepl("Creek", site) ~ "creek",
+                             grepl("Mudflat", site) ~ "mudflat"))
+
+total_cover = data %>%
+  group_by(deploy_num, site) %>%
+  summarise(total_cover = mean(total_cover)) %>%
+  mutate(Habitat = case_when(grepl("Seagrass", site) ~ "Seagrass", 
+                             grepl("Creek", site) ~ "Creek",
+                             grepl("Mudflat", site) ~ "Mudflat"))
+
+ggplot(total_cover , aes(x = reorder(site, total_cover), y = total_cover, 
+                         fill = Habitat, color = Habitat))+theme_bw()+
+  geom_col()+ 
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = .3), 
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 14))+
+  labs(x = "Site", y = "Total Cover Habitat Forming Species")
+
+```
+
+## Seagrass data
+- summarizes seagrass avg blade length, max 10 blades, max 25% blades, and avg shoot density
+```{r}
+seagrass = read.csv("data/raw_data/seagrass_all.csv", header = TRUE)
+seagrass$id = paste(seagrass$site, seagrass$Transect, sep = "_")
+seagrass_max = read.csv("data/clean_data/seagrass_max_canopy.csv", header = TRUE) #max canopy as calculated in excel
+
+ggplot(seagrass, aes(x = Site_code, y = Length))+ theme_bw()+
+  geom_boxplot()+ ylab("Seagrass blade length")+
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12))
+
+# # Calculate mean blade length by transect
+# seagrass_summary = seagrass %>%
+#   group_by(Date, site, Transect) %>%
+#   summarise(mean = mean(Length))
+# 
+# # # add max blade length to df - transect
+# # seagrass_summary$max_10 = seagrass_max$mean_10
+# # seagrass_summary$max_25perc = seagrass_max$mean_25percent
+
+# Average blade length by site
+seagrass_site = seagrass %>%
+  group_by(Date, site) %>%
+  summarise(avg_blade_length = mean(Length))
+
+# Average Shoot density by site
+shoot_data = data %>% 
+  filter(canopy.sampled == "yes")
+avg_shoot_density = shoot_data %>% 
+  group_by(deploy_num, site) %>%
+  summarize(avg_shoot_density = mean(shoot.density1_16m2))
+
+# Summarize max canopy by site
+# Averages the max of each transect (this is not how the cover is calculated)
+max_canopy_site = seagrass_max %>%
+  group_by(site) %>%
+  summarize(max10 = mean(mean_10))
+  
+# Put all seagrass summaries together
+seagrass_all = left_join(seagrass_site, avg_shoot_density[,c("site","avg_shoot_density")], by = "site")
+seagrass_all = left_join(seagrass_all, max_canopy_site[,c("site", "max10")], by = "site")
+
+```
+
+## Community data - summarized by each tow
+
+## - indicates code I've edited to explore trophic level and invertebrate abundances
+
+```{r}
+trawl = read.csv("data/raw_data/trawl/summer_trawl_data_2019.csv", header = TRUE)
+
+#trawl summary
+tow_time = mean(trawl$Duration_min_sec)
+tow_timeSD = sd(trawl$Duration_min_sec)
+tow_speed = mean(trawl$Speed_km_hr)
+tow_speedSD = sd(trawl$Speed_km_hr)
+
+trawl$Depth_m[43] = 1
+trawl$Depth_m = as.numeric(trawl$Depth_m)
+tow_depthMin = min(trawl$Depth_m)
+tow_depthMax = max(trawl$Depth_m)
+tow_depth = mean(trawl$Depth_m)
+
+# catch summary
+catch_data = data.frame(trawl[,c(1,3:5,7,13:17,19:67)])
+spp_data = catch_data[,11:59]
+spp_data[is.na(spp_data)] = 0
+spp_data = spp_data[, colSums(spp_data) > 0]
+catch_data = cbind(catch_data[,1:10],spp_data)
+
+# species = data.frame(colnames(spp_data))
+# write.csv(species, file = "species_list.csv")
+
+catch_long = data.frame(gather(catch_data, "identity", "abund", -Date, -Tow_number,-Site, -Project.Site.Name, 
+                               -Habitat, -Distance_m, -Distance_km_speed_duration_calc, -Depth_m, -Temp_C, -Sal_ppt))
+catch_long = catch_long %>%
+ mutate(std_dist = Distance_m/100, std_abund = abund/std_dist)
+
+std_catch = data.frame(pivot_wider(catch_long,id_cols = 1:10, names_from = "identity",values_from = "std_abund"))
+
+species_list = read.csv("data/metadata/species_list.csv", header = TRUE)
+
+catch_long = left_join(catch_long, species_list[,c(2,4:7)], by = c("identity" = "colnames.spp_data.")) 
+
+# Sum replicate trawls
+catch_long$Depth_m = as.numeric(catch_long$Depth_m)
+test_catch = catch_long %>%
+  group_by(Project.Site.Name, identity) %>%
+  summarise(habitat = Habitat, guild = guild, guild_secondary = guild_secondary, soniferous = soniferous, 
+            depth_m_avg = mean(Depth_m), temp_avg = mean(Temp_C), sal_avg = mean(Sal_ppt),
+            dist_m_sum = sum(Distance_m), abund_sum = sum(abund))
+
+test_catch = test_catch %>%
+ mutate(std_dist_sum = dist_m_sum/200, std_abund_sum = abund_sum/std_dist_sum)
+
+test_catch = distinct(test_catch)
+
+soniferous = test_catch %>%
+  filter(abund_sum > 0)%>%
+  group_by(Project.Site.Name, soniferous)%>%
+  summarize(soniferous_S = n()) %>%
+  filter(soniferous == 'Y')
+
+std_catch_sum = data.frame(pivot_wider(test_catch,id_cols = c(1,3,7:9), 
+                                       names_from = "identity",values_from = "std_abund_sum"))
+#write.csv(std_catch_sum, "data/clean_data/std_catch_sum.csv")
+
+# Community metrics summed
+trawl_metrics = std_catch_sum[,c(1:5)]
+trawl_metrics$total_abund_sum = rowSums(std_catch_sum[,6:41])
+trawl_metrics$comm_richness_sum = apply(std_catch_sum[,c(6:41)]>0, 1, sum)
+trawl_metrics$comm_shannonD_sum = diversity(std_catch_sum[,6:41], "shannon")
+trawl_metrics$comm_evenness_sum = trawl_metrics$comm_shannonD_sum/log(trawl_metrics$comm_richness_sum, base = 2)
+
+# Abundance by guild
+guild_abund = test_catch %>%
+  group_by(Project.Site.Name,guild) %>%
+  summarise(guild_abund = mean(std_abund_sum))
+
+guild_abund = pivot_wider(guild_abund, id_cols = 1, names_from = "guild", values_from = "guild_abund")
+
+# Combine trawl metrics
+trawl_metrics = left_join(trawl_metrics, guild_abund, by = "Project.Site.Name")
+trawl_metrics = left_join(trawl_metrics, soniferous, by = "Project.Site.Name")
+trawl_metrics$soniferous[is.na(trawl_metrics$soniferous)] <- "N"
+trawl_metrics$soniferous_S[is.na(trawl_metrics$soniferous_S)] <- 0
+
+# Abundance by Secondary guilds
+guild2_abund = test_catch %>%
+  group_by(Project.Site.Name,guild_secondary) %>%
+  summarise(guild2_abund = mean(std_abund_sum))
+
+guild2_abund = pivot_wider(guild2_abund, id_cols = 1, names_from = "guild_secondary", values_from = "guild2_abund")
+trawl_metrics = left_join(trawl_metrics, guild2_abund, by = "Project.Site.Name")
+
+# Retain abundances of species of interest
+trawl_metrics = left_join(trawl_metrics, std_catch_sum[,c("Project.Site.Name","num_bai_chr","num_ort_chr","num_ops_tau")], by="Project.Site.Name")
+
+## stacked bar graph of trawl data
+
+
+```
+
+## Landscape scale habitat data
+
+```{r}
+
+landscapeMetrics = read.csv("data/clean_data/landscape_metrics.csv", header = TRUE)
+landscapeMetrics = landscapeMetrics %>%
+  mutate(habitat_total = seagrass_area+saltmarsh_area+oyster_area) %>%
+  select(-contains(c("sand", "channel","land","shape","mudflat")))
+
+
+# manually edited nearest_neighbor_results.csv to include site_code
+annMetrics = read.csv("data/raw_data/nearest_neighbor_results.csv", header = TRUE)
+
+```
+
+## Temperature data
+
+```{r}
+
+tempSTpmHT = read.csv("data/clean_data/pmHT_tempAvg.csv", header = TRUE)
+
+tempAll = read.csv("data/clean_data/soundHabTemp.csv", header = TRUE)
+
+
+```
+
+## Soundscape data
+
+```{r}
+# Site names added manually
+spl_pmHT = as.data.frame(read.csv("data/clean_data/avg_pmHT_SPL.csv", header = TRUE))
+
+# Toadfish call rates
+toadfish = read.csv("data/clean_data/TF_callRatesNight.csv")
+
+# Silver Perch
+perch = read.csv("data/clean_data/PerchcallRatesNight.csv")
+
+# # Add bioacoustic index 
+# BI = read.csv("data/clean_data/bioacousticIndex.csv")
+```
+
+## Putting it together
+
+```{r}
+ecometrics = site_means
+ecometrics = left_join(ecometrics, site_means_comb[,c("site","seagrass","richness_comb","shannonD_comb","evenness_comb")], 
+                       by = "site")
+ecometrics = left_join(ecometrics, total_cover[,c("site","total_cover", "Habitat")], by = "site")
+ecometrics = left_join(ecometrics, seagrass_all[,c("site","avg_blade_length","avg_shoot_density","max10")], by =  "site")
+
+#create matching habitat variable to join habitat and trawl data
+ecometrics$site_code = c("C7","MF2","SG10","SG12","C2","MF1","SG2","SG4","CB","MFA","SB","SC","C8","MF7","SG6","SG9",
+                         "C4","C5","S14","S15","C3","C6","SG1","SG17")
+ecometrics$site_code2 = c("C7","M2","S10","S12","C2","M1","S2","S4","CB","MA","SB","SC","C8","M7","S6","S9",
+                         "C4","C5","S14","S15","C3","C6","S1","S17")
+ecometrics = left_join(ecometrics, trawl_metrics, by = c("site_code"="Project.Site.Name"))
+
+ecometrics = left_join(ecometrics, landscapeMetrics, by = c("site_code" = "site"))
+ecometrics = left_join(ecometrics, annMetrics[,c("site_code","NNratio","dist2adjPatch","adj_hab_type","richness_landscape")], by = "site_code")
+ecometrics = left_join(ecometrics, tempSTpmHT, by = "site_code")
+ecometrics = left_join(ecometrics, tempAll, by = c("site_code2" = "site"))
+ecometrics = left_join(ecometrics, spl_pmHT, by = c("site_code" = "site"))
+ecometrics = left_join(ecometrics, toadfish, by = c("site_code2" = "Site"))
+ecometrics = left_join(ecometrics, perch, by = c("site_code2" = "Site"))
+
+# Convert seagrass canopy NAs to zeros
+ecometrics$avg_blade_length[is.na(ecometrics$avg_blade_length)] = 0
+ecometrics$avg_shoot_density[is.na(ecometrics$avg_shoot_density)] = 0
+ecometrics$max10[is.na(ecometrics$max10)] = 0
+
+#ecometrics$ToadCallRate[is.na(ecometrics$ToadCallRate)] = 0
+
+# remove temperature from trawl data
+ecometrics = ecometrics %>%
+  select(-temp_avg)
+
+# include average depth and salinity for 2 sites with missing data
+ecometrics$depth_m_avg[is.na(ecometrics$depth_m_avg)] = mean(ecometrics$depth_m_avg, na.rm = TRUE)
+ecometrics$sal_avg[is.na(ecometrics$sal_avg)] = mean(ecometrics$sal_avg, na.rm = TRUE)
+
+
+```
+
+## Save ecometrics dataframes
+
+```{r}
+
+# write.csv(ecometrics, "data/clean_data/ecometrics.csv")
+# 
+# # Filter ecometrics to habitat specific data and save
+# ecometrics_seagrass = ecometrics %>%
+#   filter(Habitat == "Seagrass")
+# ecometrics_creek = ecometrics %>%
+#   filter(Habitat == "Creek")
+# ecometrics_mudflat = ecometrics %>%
+#   filter(Habitat == "Mudflat")
+# 
+# write.csv(ecometrics_seagrass, "data/clean_data/ecometricsSeagrass.csv")
+# write.csv(ecometrics_creek, "data/clean_data/ecometricsCreek.csv")
+# write.csv(ecometrics_mudflat, "data/clean_data/ecometricsMudflat.csv")
+
+```
+
+## Summaries & figures for manuscript
+
+```{r}
+
+# Patch Scale Cover
+patchScale4fig = siteMean_pc[!(siteMean_pc$identity == "other"| 
+                                      siteMean_pc$identity == "algae" | 
+                                      siteMean_pc$identity == "bare"),]
+
+patchScale4fig$identity = factor(patchScale4fig$identity ,levels = c("ruppia", "zostera", "halodule", "oyster", "saltmarsh"))
+
+dfOrder = c(1,4,2,3,5,8,6,7,9,12,10,11,13,16,14,15,17,18,19,20,21,22,23,24)
+patchScale4fig$index = rep(dfOrder,5)
+
+ggplot(aes(x = reorder(site,index), y = perc_cover, fill = identity), data = patchScale4fig)+ theme_bw()+
+  geom_bar(stat = "identity")+
+  labs(x = "Site", y = "Percent cover", fill = "Habitat")+
+  scale_fill_manual(values = c("#7ad151", "#2a788e","#22a884", "#440154", "#414487"))+
+  theme(axis.text.x = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.title = element_blank(),
+        legend.position = "top")
+  
+
+# Landscape area
+landscapeArea = landscapeMetrics %>%
+  select(index, site, seagrass_area, saltmarsh_area, oyster_area) %>%
+  pivot_longer(cols = c(seagrass_area, saltmarsh_area, oyster_area), names_to = "Habitat", values_to = "Area")
+
+landscapeArea$Habitat = factor(landscapeArea$Habitat)
+
+ggplot(aes(x = reorder(site, index), y = Area, fill = Habitat), data = landscapeArea)+ theme_bw()+
+  geom_bar(stat = "identity")+
+  labs(x = "Site", y = "Area", fill = "Habitat")+
+  scale_fill_manual(values = c("#440154","#414487", "#22a884"))+
+  theme(axis.text.x = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12),
+        legend.position = "top")
+
+# Trawl Metrics
+ggplot(aes(x = reorder(site,index), y = total_abund_sum), data = ecometrics)+ theme_bw()+
+  geom_bar(stat = "identity")+
+  labs(x = "Site", y = "Total CPUE")+
+  theme(axis.text.x = element_text(size = 12),
+        axis.title = element_text(size = 14))+
+  annotate("text",x=ecometrics$index,y=ecometrics$total_abund_sum+30,label=ecometrics$comm_richness_sum)
+  
+
+# Abiotic summaries
+min(ecometrics$sal_avg)
+max(ecometrics$sal_avg)
+mean(ecometrics$sal_avg)
+
+min(ecometrics$depth_m_avg)
+max(ecometrics$depth_m_avg)
+mean(ecometrics$depth_m_avg)
+
+tempNightAllSites = read.csv("data/clean_data/SoundHabTempNightAllSites.csv", header = TRUE)
+tempNightAllSites$deployment = factor(tempNightAllSites$deployment)
+ggplot(aes(x = deployment, y = temperature), data = tempNightAllSites)+theme_bw()+
+  geom_boxplot()+
+  labs(x = "Sampling period", y = "Temperature")+
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12))
+
+```
+
+## Soundscape summary figures for manuscript
+
+```{r}
+# manually corrected data frames to work with geom_boxplot
+low_spl = read.csv("data/clean_data/SPL_low_pmHT_long.csv", header = TRUE)
+high_spl = read.csv("data/clean_data/spl_high_pmHT_long.csv", header = TRUE)
+
+low_spl$site = factor(low_spl$site, levels = unique(low_spl$site))
+high_spl$site = factor(high_spl$site, levels = unique(high_spl$site))
+
+
+# boxplot of SPL by each site
+# Low frequency
+lowFig = ggplot(aes(x = site, y = low_spl), data = low_spl)+ theme_bw()+
+  geom_boxplot()+
+  labs(x = "Site", y = "Low frequency SPL (db re 1 μPa)")+
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12))
+
+# High Frequency
+highFig = ggplot(aes(x = site, y = spl_high), data = high_spl)+ theme_bw()+
+  geom_boxplot()+
+  labs(x = "Site", y = "High frequency SPL (db re 1 μPa)")+
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12))
+  
+# plot together
+grid.arrange(lowFig, highFig, nrow = 2)
+
+
+# repeat for call rates
+TFsummary4fig = read.csv("data/clean_data/TFsummary4fig.csv", header = TRUE)
+Perchsummary4fig = read.csv("data/clean_data/Perchsummary4fig.csv", header = TRUE)
+
+colnames(TFsummary4fig) = c("site", "AvgPerDayPresent", "AvgPerDayZeroes")
+colnames(Perchsummary4fig) = c("site", "AvgPerNightPresent", "AvgPerNightZeroes", "AvgPerDayPresent", "AvgPerDayZeroes")
+
+TFsummary4fig$site = factor(TFsummary4fig$site, levels = TFsummary4fig$site)
+Perchsummary4fig$site = factor(Perchsummary4fig$site, levels = Perchsummary4fig$site)
+
+
+# Toadfish
+toadFig = ggplot(aes(x = site, y = AvgPerDayPresent), data = TFsummary4fig)+theme_bw()+
+  geom_col()+
+  xlab("Site")+
+  ylab("Average number of calls per day")+
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12))
+  
+# Perch
+perchFig = ggplot(aes(x = site, y = AvgPerNightPresent), data = Perchsummary4fig)+theme_bw()+
+  geom_col()+
+  xlab("Site")+
+  ylab("Average number of calls per day")+
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12))
+
+grid.arrange(toadFig, perchFig, nrow = 2)
+
+```
+
+
