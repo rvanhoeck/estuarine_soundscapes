@@ -18,6 +18,7 @@ library(tidyr)
 library(ggplot2)
 library(cluster)
 library(RColorBrewer)
+library(here)
 
 ```
 
@@ -25,12 +26,12 @@ library(RColorBrewer)
 
 ```{r}
 #read in distance matrix and metadata
-Df_pmHT = read.csv("data/clean_data/Df_pmHT_noWater2022.csv", header = F)
+Df_pmHT = read.csv(here("data/clean_data/Df_pmHT_noWater2022.csv"), header = F)
 
 Df_pmHT = as.dist(Df_pmHT)
-Df_pmHT_metadata = read.csv("data/metadata/Df_pmHT_1_metadata.csv", header = T)
+Df_pmHT_metadata = read.csv(here("data/metadata/Df_pmHT_1_metadata.csv"), header = T)
 
-# calculate nmds ordination
+# calculate nmds ordination # from vegan package
 nmds_1 = metaMDS(Df_pmHT, k=2, trymax = 20, autotransform = FALSE, plot = FALSE)
 
 nmdsScores = as.data.frame(scores(nmds_1))  
@@ -63,10 +64,10 @@ ggplot(aes(x = NMDS1, y = NMDS2), data = nmdsScores)+ theme_bw()+
 ## Add environmental vectors - new
 
 ```{r}
-lowSPLfiltered = read.csv("data/clean_data/metricCorrEverything_lowSPL.csv")
-vars2keep = colnames(lowSPLfiltered[c(2:25)])
+#lowSPLfiltered = read.csv(here("data/clean_data/metricCorrEverything_lowSPL.csv"))
+#vars2keep = colnames(lowSPLfiltered[c(2:25)])
 
-ecometrics = read.csv("data/clean_data/ecometrics.csv")
+ecometrics = read.csv(here("data/clean_data/ecometrics.csv"))
 #ecometricsFilt = read.csv("data/clean_data/ecometricsFiltered.csv")
 
 env_data = ecometrics %>%
