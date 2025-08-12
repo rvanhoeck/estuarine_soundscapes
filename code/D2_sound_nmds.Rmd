@@ -64,8 +64,8 @@ ggplot(aes(x = NMDS1, y = NMDS2), data = nmdsScores)+ theme_bw()+
 ## Add environmental vectors - new
 
 ```{r}
-#lowSPLfiltered = read.csv(here("data/clean_data/metricCorrEverything_lowSPL.csv"))
-#vars2keep = colnames(lowSPLfiltered[c(2:25)])
+lowSPLfiltered = read.csv(here("data/clean_data/metricCorrEverything_lowSPL.csv"))
+vars2keep = colnames(lowSPLfiltered[c(2:25)])
 
 ecometrics = read.csv(here("data/clean_data/ecometrics.csv"))
 #ecometricsFilt = read.csv("data/clean_data/ecometricsFiltered.csv")
